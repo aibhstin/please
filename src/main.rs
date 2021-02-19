@@ -131,6 +131,49 @@ fn main() {
     println!("Entered password is: {}", password);
 
 
+    // Validate password
+
+    // Read from /etc/shadow
+
+    let shadow = fs::read_to_string("/etc/shadow")
+        .expect("Unable to read from /etc/shadow");
+    let shadow: Vec<&str> = shadow
+        .split("\n")
+        .filter(|&line| line != "")
+        .collect();
+    println!("Contents of shadow: {:?}", shadow);
+
+    let mut user_shadow: String = "".to_string();
+
+    for line in shadow.into_iter() {
+        let tokens: Vec<&str> = line
+            .split(":")
+            .collect();
+
+        if tokens[0] == current_user {
+            user_shadow = tokens.join("");
+            break;
+        }
+    }
+
+    if user_shadow == "" {
+        println!("User not found in shadow");
+        process::exit(1);
+    }
+
+    if debug_mode {
+        println!("User line in shadow: {}", user_shadow);
+    }
+
+    // Extract hash id from user_shadow
+
+    let hash_id: Vec<&str> = user_shadow.split("$").collect();
+    let hash_id = hash_id[1];
+
+    if debug_mode {
+        println!("Hash ID: {}", hash_id);
+    }
+
     // Extract command name from arguments
 
     let mut command_name = String::new();
