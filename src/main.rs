@@ -1,6 +1,10 @@
 use std::env;
 use std::fs;
 use std::process;
+use std::io;
+use std::io::Write;
+
+extern crate rpassword;
 
 #[link(name = "c")]
 extern "C" {
@@ -119,8 +123,15 @@ fn main() {
         process::exit(1);
     }
 
-    // At this point, process should be running with root permissions
-    // and current user is in the allowed list.
+    // Get password
+
+    print!("Password: ");
+    io::stdout().flush().unwrap();
+    let password = rpassword::read_password().unwrap();
+    println!("Entered password is: {}", password);
+
+
+    // Extract command name from arguments
 
     let mut command_name = String::new();
     if (debug_mode && args.len() >= 3) || (args.len() >= 2) {
@@ -132,6 +143,8 @@ fn main() {
         }
     }
 
+    // Extract command args from arguments
+
     let mut command_args: Vec<String> = Vec::new();
     if (debug_mode && args.len() > 3) || (args.len() > 2) {
         if debug_mode {
@@ -141,6 +154,8 @@ fn main() {
             command_args = args[2..].to_vec();
         }
     }
+
+    // Execute command with args
 
     let cmd = process::Command::new(command_name)
         .args(command_args)
