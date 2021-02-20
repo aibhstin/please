@@ -69,8 +69,11 @@ fn main() {
 
     // Execute command with args
 
-    let _cmd = process::Command::new(command_name)
+    let mut cmd = process::Command::new(command_name)
         .args(command_args)
         .spawn()
         .expect("Failed to spawn process");
+    let _result = cmd
+        .wait()
+        .unwrap();
 }
