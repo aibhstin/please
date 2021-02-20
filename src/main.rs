@@ -1,202 +1,53 @@
 use std::env;
-use std::fs;
 use std::process;
-use std::io;
-use std::io::Write;
+
+mod uid;
+mod config;
+mod shadow;
+mod utility;
+mod password;
 
 extern crate rpassword;
 extern crate rscrypt;
 
-#[link(name = "c")]
-extern "C" {
-    fn geteuid() -> u32;
-    fn setuid(_: u32) -> u32;
-}
-
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let mut debug_mode = false;
 
-    if args.len() >= 2 {
-        if args[1] == "-d" {
-            debug_mode = true;
-        }
+    let euid = uid::get_euid();
+
+    if euid != 0 {
+        utility::exit(1, "SUID root should be set on binary.");
     }
 
-    let mut euid: u32 = 666;
-    unsafe {
-        euid = geteuid();
+    let success = uid::set_uid(0);
+    if success != 0 {
+        utility::exit(1, "Unable to set uid");
     }
 
-    if debug_mode {
-        println!("UID of process: {}", euid);
-    }
-
-    if !debug_mode && euid != 0 {
-        println!("'please' does not have root permissions, likely because SUID is not set.");
-        println!("SUID root should be set on the binary.");
-        process::exit(1);
-    }
-
-    unsafe {
-        setuid(0);
-        euid = geteuid();
-    }
-
-    if debug_mode {
-        println!("UID of process [2]: {}", euid);
-    }
-
-    if debug_mode {
-        //println!("Args: {:?}", args);
-        println!("Accessing config file at /usr/local/etc/please.conf...");
-    }
-    
-    let contents = fs::read_to_string("/usr/local/etc/please.conf");
-
-    let contents = match contents {
-        Ok(contents) => contents,
-        Err(_) => {
-            println!("Error opening config file at /usr/local/etc/please.conf");
-            process::exit(1);
-        },
-    };
-
-    if debug_mode {
-        println!("Config contents: {}", contents);
-    }
-
-    let lines: Vec<&str> = contents
-        .split("\n")
-        .filter(|&line| line != " " && line != "")
-        .collect();
-
-    if debug_mode {
-        println!("Lines in config: {:?}", lines);
-    }
-
-    let mut allowed_as_root: Vec<&str> = Vec::new();
-
-    for (idx, line) in lines.into_iter().enumerate() {
-        let words: Vec<&str> = line
-            .split(" ")
-            .collect();
-
-        let has_4_words = words.len() == 4;
-
-        if !has_4_words {
-            println!("Error in config file (/use/local/etc/please.conf) at line {}", idx + 1);
-            println!("Terminating");
-        }
-
-        let has_allow = words[0] == "allow";
-        let has_as = words[2] == "as";
-        let has_root = words[3] == "root";
-
-        if has_allow && has_as && has_root {
-            allowed_as_root.push(words[1]);
-        }
-    }
-
-    if debug_mode {
-        println!("Users permitted as root: {:?}", allowed_as_root);
-    }
-
-    let mut user_allowed = false;
-    let current_user = env::var("USER");
-
-    let current_user = match current_user {
-        Ok(current_user) => current_user,
-        Err(_) => {
-            println!("Error reading $USER");
-            process::exit(1);
-        },
-    };
-
-    for user in allowed_as_root.into_iter() {
-        if user == current_user {
-            user_allowed = true;
-        }
-    }
+    let allowed_as_root = config::read_config();
+    let current_user = config::get_user();
+    let user_allowed = config::is_allowed(&current_user, allowed_as_root);
 
     if !user_allowed {
-        println!("User {} is not permitted to run as root.", current_user);
-        process::exit(1);
+        utility::exit(1, "User is not permitted to run as root");
     }
 
-    // Get password
 
-    print!("Password: ");
-    io::stdout().flush().unwrap();
-    let password = rpassword::read_password().unwrap();
+    let password = password::get_password();
 
-    // Validate password
-
-    // Read from /etc/shadow
-
-    let shadow = fs::read_to_string("/etc/shadow")
-        .expect("Unable to read from /etc/shadow");
-    let shadow: Vec<&str> = shadow
-        .split("\n")
-        .filter(|&line| line != "")
-        .collect();
-    //println!("Contents of shadow: {:?}", shadow);
-
-    let mut user_shadow: String = "".to_string();
-
-    for line in shadow.into_iter() {
-        let tokens: Vec<&str> = line
-            .split(":")
-            .collect();
-
-        if tokens[0] == current_user {
-            user_shadow = tokens.join(":");
-            break;
-        }
-    }
-
-    if user_shadow == "" {
-        println!("User not found in shadow");
-        process::exit(1);
-    }
-
-    if debug_mode {
-        println!("User line in shadow: {}", user_shadow);
-    }
-
-    // Extract hash id from user_shadow
-
-    let hash_string: &str = user_shadow.split(":").collect::<Vec<&str>>()[1];
-
-    if debug_mode {
-        println!("Hash string: {}", hash_string);
-    }
-
-    let salt_string = hash_string.clone();
-    let salt_string: Vec<&str> = salt_string.split("$").collect();
-    let mut salt: Vec<String> = Vec::new();
-    salt.push("$".to_string());
-    salt.push(salt_string[1].to_string());
-    salt.push("$".to_string());
-    salt.push(salt_string[2].to_string());
-    let salt = salt.join("");
-
-    if debug_mode {
-        println!("Salt: {}", salt);
-    }
-
+    let hash_string = shadow::get_user_hash(current_user);
+    let salt = shadow::get_salt(hash_string.clone());
     let hash = rscrypt::c_crypt(&password, &salt);
 
     if hash != hash_string {
-        println!("Incorrect password!");
-        process::exit(1);
+        utility::exit(1, "Incorrect password");
     }
 
     // Extract command name from arguments
 
     let mut command_name = String::new();
-    if (debug_mode && args.len() >= 3) || (args.len() >= 2) {
-        if debug_mode {
+    if args.len() >= 2 {
+        if false {
             println!("Running command {}", args[2]);
             command_name = args[2].clone();
         } else {
@@ -207,8 +58,8 @@ fn main() {
     // Extract command args from arguments
 
     let mut command_args: Vec<String> = Vec::new();
-    if (debug_mode && args.len() > 3) || (args.len() > 2) {
-        if debug_mode {
+    if args.len() > 2 {
+        if false {
             command_args = args[3..].to_vec();
             println!("Args to command: {:?}", command_args);
         } else {
@@ -218,7 +69,7 @@ fn main() {
 
     // Execute command with args
 
-    let cmd = process::Command::new(command_name)
+    let _cmd = process::Command::new(command_name)
         .args(command_args)
         .spawn()
         .expect("Failed to spawn process");
