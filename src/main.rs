@@ -5,6 +5,7 @@ use std::io;
 use std::io::Write;
 
 extern crate rpassword;
+extern crate rs_crypt;
 
 #[link(name = "c")]
 extern "C" {
@@ -151,7 +152,7 @@ fn main() {
             .collect();
 
         if tokens[0] == current_user {
-            user_shadow = tokens.join("");
+            user_shadow = tokens.join(":");
             break;
         }
     }
@@ -167,11 +168,23 @@ fn main() {
 
     // Extract hash id from user_shadow
 
-    let hash_id: Vec<&str> = user_shadow.split("$").collect();
-    let hash_id = hash_id[1];
+    let hash_string: &str = user_shadow.split(":").collect::<Vec<&str>>()[1];
 
     if debug_mode {
-        println!("Hash ID: {}", hash_id);
+        println!("Hash string: {}", hash_string);
+    }
+
+    let salt_string = hash_string.clone();
+    let salt_string: Vec<&str> = salt_string.split("$").collect();
+    let mut salt: Vec<String> = Vec::new();
+    salt.push("$".to_string());
+    salt.push(salt_string[1].to_string());
+    salt.push("$".to_string());
+    salt.push(salt_string[2].to_string());
+    let salt = salt.join("");
+
+    if debug_mode {
+        println!("Salt: {}", salt);
     }
 
     // Extract command name from arguments

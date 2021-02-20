@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 rpassword = "0.0.4"
+rs-crypt = { git = "https://github.com/aibhstin/rscrypt", branch = "main" }
