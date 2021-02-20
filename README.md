@@ -23,6 +23,10 @@ Rust, which adds a safety blanket.
 ## Are there any limitations
 Yes. Currently you can only run one command at a time. That means no pipes or `&&`.
 
+## How is it configured
+A config file should be placed at `/usr/local/etc/please.conf`. Also, you will need 
+to manually set a SUID bit as root on the finished binary. 
+
 ## What is rs-crypt
 `rs-crypt` is a simple Rust wrapper(?)/binding(?) over the `crypt` function of 
 `crypt.h`. 
