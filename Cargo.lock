@@ -11,7 +11,7 @@ name = "please"
 version = "0.1.0"
 dependencies = [
  "rpassword",
- "rs-crypt",
+ "rscrypt",
 ]
 
 [[package]]
@@ -25,9 +25,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "rs-crypt"
+name = "rscrypt"
 version = "0.1.0"
-source = "git+https://github.com/aibhstin/rscrypt?branch=main#89232515b4d5a58e61f9fc7276cfb9db45673ec7"
+source = "git+https://github.com/aibhstin/rscrypt?branch=main#eb7f489be7b14df4aa5e8786943867895e88562e"
 
 [[package]]
 name = "termios"

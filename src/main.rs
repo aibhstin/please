@@ -5,7 +5,7 @@ use std::io;
 use std::io::Write;
 
 extern crate rpassword;
-extern crate rs_crypt;
+extern crate rscrypt;
 
 #[link(name = "c")]
 extern "C" {
@@ -129,8 +129,6 @@ fn main() {
     print!("Password: ");
     io::stdout().flush().unwrap();
     let password = rpassword::read_password().unwrap();
-    println!("Entered password is: {}", password);
-
 
     // Validate password
 
@@ -142,7 +140,7 @@ fn main() {
         .split("\n")
         .filter(|&line| line != "")
         .collect();
-    println!("Contents of shadow: {:?}", shadow);
+    //println!("Contents of shadow: {:?}", shadow);
 
     let mut user_shadow: String = "".to_string();
 
@@ -185,6 +183,13 @@ fn main() {
 
     if debug_mode {
         println!("Salt: {}", salt);
+    }
+
+    let hash = rscrypt::c_crypt(&password, &salt);
+
+    if hash != hash_string {
+        println!("Incorrect password!");
+        process::exit(1);
     }
 
     // Extract command name from arguments
