@@ -15,6 +15,13 @@ Yes. Currently you can only run one command at a time. That means no pipes or `&
 A config file should be placed at `/usr/local/etc/please.conf`. Also, you will need 
 to manually set a SUID bit as root on the finished binary. 
 
+## What should go in the config file
+The config file should consist of lines that look like this:
+
+```
+allow <USER> as root
+```
+
 ## What is rs-crypt
 `rs-crypt` is a simple Rust wrapper(?)/binding(?) over the `crypt` function of 
 `crypt.h`. 
