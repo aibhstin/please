@@ -45,6 +45,7 @@ fn main() {
 
     // Extract command name from arguments
 
+    /*
     let mut command_name = String::new();
     if args.len() >= 2 {
         if false {
@@ -66,22 +67,26 @@ fn main() {
             command_args = args[2..].to_vec();
         }
     }
+    */
 
     // Get shell
-    /*
     let current_shell = env::var("SHELL").unwrap();
 
     let mut command: Vec<String> = Vec::new();
     command.push("-c".to_string());
+    //command.push("\"");
+    let mut subcommand: String = String::new();
     for arg in args[1..].into_iter() {
-        command.push(arg.to_string());
+        subcommand.push_str(" ");
+        subcommand.push_str(arg);
     }
-    */
+    command.push(subcommand);
+    
 
     // Execute command with args
 
-    let mut cmd = process::Command::new(command_name)
-        .args(command_args)
+    let mut cmd = process::Command::new(current_shell)
+        .args(command)
         .spawn()
         .expect("Failed to spawn process");
     let _result = cmd
